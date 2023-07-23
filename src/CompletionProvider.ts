@@ -1,95 +1,83 @@
-import {EOL} from 'os';
-import {Position, CompletionItem} from 'vscode-languageserver-protocol';
-import * as lsp from 'vscode-languageserver/node';
-import {TextDocument} from 'vscode-languageserver-textdocument';
-import {
-    findImportPath,
-    getAllClassNames,
-    getCurrentDirFromUri,
-    getTransformer,
-} from './utils';
-import {textDocuments} from './textDocuments';
-import {CamelCaseValues} from './utils';
+import { EOL } from "os";
+import { CompletionList } from "vscode-languageserver";
+import { CompletionItem, Position, Range, TextEdit } from "vscode-languageserver-protocol";
+import { TextDocument } from "vscode-languageserver-textdocument";
+import * as lsp from "vscode-languageserver/node";
+import * as db from "./db";
+import { textDocuments } from "./textDocuments";
+import { CamelCaseValues, getTransformer } from "./utils";
 
-// check if current character or last character is .
-function isTrigger(line: string, position: Position): boolean {
-    const i = position.character - 1;
-    return line[i] === '.' || (i > 1 && line[i - 1] === '.');
-}
-
-function getWords(line: string, position: Position): string {
-    const text = line.slice(0, position.character);
-    const index = text.search(/[a-z0-9\._]*$/i);
-    if (index === -1) {
-        return '';
-    }
-
-    return text.slice(index);
-}
+// // check if current character or last character is .
+// function isTrigger(line: string, position: Position): boolean {
+//     const i = position.character - 1;
+//     return line[i] === '.' || (i > 1 && line[i - 1] === '.');
+// }
+//
+// function getWords(line: string, position: Position): string {
+//     const text = line.slice(0, position.character);
+//     const index = text.search(/[a-z0-9\._]*$/i);
+//     if (index === -1) {
+//         return '';
+//     }
+//
+//     return text.slice(index);
+// }
 
 export class CSSModulesCompletionProvider {
-    _classTransformer: (x: string) => string;
+  _classTransformer: (x: string) => string;
 
-    constructor(camelCaseConfig: CamelCaseValues) {
-        this._classTransformer = getTransformer(camelCaseConfig);
+  constructor(camelCaseConfig: CamelCaseValues) {
+    this._classTransformer = getTransformer(camelCaseConfig);
+  }
+
+  updateSettings(camelCaseConfig: CamelCaseValues): void {
+    this._classTransformer = getTransformer(camelCaseConfig);
+  }
+
+  completion = async (params: lsp.CompletionParams) => {
+    const textdocument = textDocuments.get(params.textDocument.uri);
+    if (textdocument === undefined) {
+      return [];
     }
 
-    updateSettings(camelCaseConfig: CamelCaseValues): void {
-        this._classTransformer = getTransformer(camelCaseConfig);
-    }
+    return this.provideCompletionItems(textdocument, params.position);
+  };
 
-    completion = async (params: lsp.CompletionParams) => {
-        const textdocument = textDocuments.get(params.textDocument.uri);
-        if (textdocument === undefined) {
-            return [];
-        }
+  async provideCompletionItems(
+    textdocument: TextDocument,
+    position: Position,
+  ): Promise<CompletionList | null> {
+    const fileContent = textdocument.getText();
+    const lines = fileContent.split(EOL);
+    const currentLine = lines[position.line];
 
-        return this.provideCompletionItems(textdocument, params.position);
-    };
+    let lastImportLine = 0;
+    lines.forEach((line, i) => {
+      if (/@value .+ from ".+";/g.test(line)) lastImportLine = i;
+    });
 
-    async provideCompletionItems(
-        textdocument: TextDocument,
-        position: Position,
-    ): Promise<CompletionItem[] | null> {
-        const fileContent = textdocument.getText();
-        const lines = fileContent.split(EOL);
-        const currentLine = lines[position.line];
-        if (typeof currentLine !== 'string') return null;
-        const currentDir = getCurrentDirFromUri(textdocument.uri);
+    const firstColon = currentLine.indexOf(": ");
+    if (firstColon === -1) return CompletionList.create();
 
-        if (!isTrigger(currentLine, position)) {
-            return [];
-        }
+    const partialClassName = currentLine.slice(firstColon + 2);
+    const classNameMatches = db.searchPartly(partialClassName);
 
-        const words = getWords(currentLine, position);
+    const completionItems = classNameMatches.map((completion): CompletionItem => ({
+      ...CompletionItem.create(completion.key),
+      kind: lsp.CompletionItemKind.Text,
+      textEdit: TextEdit.replace(
+        Range.create(
+          Position.create(position.line, firstColon + 2),
+          Position.create(position.line, firstColon + 2 + completion.key.length),
+        ),
+        completion.key,
+      ),
+      additionalTextEdits: [TextEdit.insert(
+        Position.create(lastImportLine, 0),
+        `@value ${completion.key} from "${completion.filePath}";\n`,
+      )],
+    }));
 
-        if (words === '' || words.indexOf('.') === -1) {
-            return [];
-        }
-
-        const [obj, field] = words.split('.');
-
-        const importPath = findImportPath(fileContent, obj, currentDir);
-        if (importPath === '') {
-            return [];
-        }
-
-        const classNames: string[] = await getAllClassNames(
-            importPath,
-            field,
-            this._classTransformer,
-        ).catch(() => []);
-
-        const res = classNames.map(_class => {
-            const name = this._classTransformer(_class);
-
-            return CompletionItem.create(name);
-        });
-
-        return res.map((x, i) => ({
-            ...x,
-            kind: lsp.CompletionItemKind.Text,
-            data: i + 1,
-        }));
-    }
+    return CompletionList.create(completionItems);
+  }
 }
