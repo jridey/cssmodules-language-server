@@ -49,7 +49,7 @@ export function createConnection(): lsp.Connection {
           save: false,
         },
         hoverProvider: false,
-        definitionProvider: false,
+        definitionProvider: true,
         implementationProvider: false,
         completionProvider: {
           /**
@@ -78,20 +78,18 @@ export function createConnection(): lsp.Connection {
       const fileStream = fs.createReadStream(path.fullpath(), "utf-8");
       const rl = readline.createInterface({ input: fileStream, crlfDelay: Infinity });
       rl.on("line", (line) => {
-        const match = /@value (.+?): .*;/g.exec(line);
+        const match = /.*@value (.+?): .*;/g.exec(line);
         if (match?.[1]) {
-          db.add(match[1], path.relative());
+          const start = 0;
+          const end = 0;
+          db.add(match[1], path.relative(), start, end);
         }
       });
     });
   });
 
   connection.onCompletion(completionProvider.completion);
-
-  // connection.onDefinition(definitionProvider.definition);
-  // connection.onImplementation(definitionProvider.definition);
-  //
-  // connection.onHover(definitionProvider.hover);
+  connection.onDefinition(definitionProvider.definition);
 
   return connection;
 }

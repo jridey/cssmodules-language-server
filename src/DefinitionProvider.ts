@@ -38,60 +38,6 @@ export class CSSModulesDefinitionProvider {
     return this.provideDefinition(textdocument, params.position);
   };
 
-  hover = async (params: lsp.HoverParams) => {
-    const textdocument = textDocuments.get(params.textDocument.uri);
-    if (textdocument === undefined) {
-      return null;
-    }
-
-    return this.provideHover(textdocument, params.position);
-  };
-
-  async provideHover(
-    textdocument: TextDocument,
-    position: Position,
-  ): Promise<null | Hover> {
-    const fileContent = textdocument.getText();
-    const lines = fileContent.split(EOL);
-    const currentLine = lines[position.line];
-
-    if (typeof currentLine !== "string") {
-      return null;
-    }
-    const currentDir = getCurrentDirFromUri(textdocument.uri);
-
-    const words = getWords(currentLine, position);
-    if (words === "" || words.indexOf(".") === -1) {
-      return null;
-    }
-
-    const [obj, field] = words.split(".");
-    const importPath = findImportPath(fileContent, obj, currentDir);
-    if (importPath === "") {
-      return null;
-    }
-
-    const dict = await filePathToClassnameDict(
-      importPath,
-      getTransformer(this._camelCaseConfig),
-    );
-
-    const node: void | Classname = dict[`.${field}`];
-
-    if (!node) return null;
-
-    return {
-      contents: {
-        language: "css",
-        value: stringiyClassname(
-          field,
-          node.declarations,
-          node.comments,
-        ),
-      },
-    };
-  }
-
   async provideDefinition(
     textdocument: TextDocument,
     position: Position,
@@ -99,50 +45,69 @@ export class CSSModulesDefinitionProvider {
     const fileContent = textdocument.getText();
     const lines = fileContent.split(EOL);
     const currentLine = lines[position.line];
-
-    if (typeof currentLine !== "string") {
-      return null;
-    }
+    const currentWord = getWordAt(currentLine, position.character);
     const currentDir = getCurrentDirFromUri(textdocument.uri);
 
+    // If this is an import line then we can extract out the import path from the currentLine
     const matches = genImportRegExp("(\\S+)").exec(currentLine);
     if (
       matches
       && isImportLineMatch(currentLine, matches, position.character)
     ) {
-      const filePath: string = path.resolve(currentDir, matches[2]);
-      const targetRange: Range = Range.create(
+      const importPath: string = path.resolve(currentDir, matches[2]);
+
+      const targetPosition = await getPosition(
+        importPath,
+        currentWord,
+        this._camelCaseConfig,
+      );
+
+      let targetRange: Range = Range.create(
         Position.create(0, 0),
         Position.create(0, 0),
       );
-      return Location.create(filePath, targetRange);
-    }
+      if (targetPosition != null) {
+        targetRange = {
+          start: targetPosition,
+          end: targetPosition,
+        };
+      }
 
-    const words = getWords(currentLine, position);
-    if (words === "" || words.indexOf(".") === -1) {
-      return null;
-    }
-
-    const [obj, field] = words.split(".");
-    const importPath = findImportPath(fileContent, obj, currentDir);
-    if (importPath === "") {
-      return null;
-    }
-
-    const targetPosition = await getPosition(
-      importPath,
-      field,
-      this._camelCaseConfig,
-    );
-
-    if (targetPosition === null) {
-      return null;
-    } else {
-      const targetRange: Range = {
-        start: targetPosition,
-        end: targetPosition,
-      };
       return Location.create(`file://${importPath}`, targetRange);
     }
+
+    // Otherwise try and find the import path
+    const importPath = findImportPath(fileContent, currentWord, currentDir);
+    if (importPath !== "") {
+      const targetPosition = await getPosition(
+        importPath,
+        currentWord,
+        this._camelCaseConfig,
+      );
+      if (targetPosition != null) {
+        const targetRange: Range = {
+          start: targetPosition,
+          end: targetPosition,
+        };
+        return Location.create(`file://${importPath}`, targetRange);
+      }
+    }
+
+    return null
   }
+}
+
+// Borrowed from https://stackoverflow.com/a/5174867, slight modification to add commas as separator characters
+function getWordAt(str: string, pos: number) {
+  // Search for the word's beginning and end.
+  const left = str.slice(0, pos + 1).search(/\S+(\s|,)*$/),
+    right = str.slice(pos).search(/(\s|,)/);
+
+  // The last word in the string is a special case.
+  if (right < 0) {
+    return str.slice(left);
+  }
+
+  // Return the word, using the located bounds to extract it from the string.
+  return str.slice(left, right + pos);
 }
