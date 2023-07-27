@@ -7,6 +7,7 @@ import { DocumentUri } from "vscode-languageserver-textdocument";
 
 import postcss from "postcss";
 import type { Comment, Node, Parser, ProcessOptions } from "postcss";
+import * as db from "./db";
 
 import { resolveAliasedImport } from "./utils/resolveAliasedImport";
 
@@ -106,20 +107,14 @@ export function isImportLineMatch(
 /**
  * Finds the position of the className in filePath
  */
-export async function getPosition(
+export function getPosition(
   filePath: string,
   className: string,
-  camelCaseConfig: CamelCaseValues,
-): Promise<Position | null> {
-  const classDict = await filePathToClassnameDict(
-    filePath,
-    getTransformer(camelCaseConfig),
-  );
-  const target = classDict[`.${className}`];
-
-  return target
-    ? Position.create(target.position.line - 1, target.position.column)
-    : null;
+): Position | undefined {
+  const match = db.searchPartly(className)?.[0];
+  if (match) {
+    return Position.create(match.lineNo, match.startChar);
+  }
 }
 
 export function getWords(line: string, position: Position): string {

@@ -5,30 +5,14 @@ import { TextDocument } from "vscode-languageserver-textdocument";
 import * as lsp from "vscode-languageserver/node";
 import { textDocuments } from "./textDocuments";
 import {
-  CamelCaseValues,
-  Classname,
-  filePathToClassnameDict,
   findImportPath,
   genImportRegExp,
   getCurrentDirFromUri,
   getPosition,
-  getTransformer,
-  getWords,
   isImportLineMatch,
-  stringiyClassname,
 } from "./utils";
 
 export class CSSModulesDefinitionProvider {
-  _camelCaseConfig: CamelCaseValues;
-
-  constructor(camelCaseConfig: CamelCaseValues) {
-    this._camelCaseConfig = camelCaseConfig;
-  }
-
-  updateSettings(camelCaseConfig: CamelCaseValues): void {
-    this._camelCaseConfig = camelCaseConfig;
-  }
-
   definition = async (params: lsp.DefinitionParams) => {
     const textdocument = textDocuments.get(params.textDocument.uri);
     if (textdocument === undefined) {
@@ -56,44 +40,51 @@ export class CSSModulesDefinitionProvider {
     ) {
       const importPath: string = path.resolve(currentDir, matches[2]);
 
-      const targetPosition = await getPosition(
+      const targetPositionStart = getPosition(
         importPath,
         currentWord,
-        this._camelCaseConfig,
       );
 
       let targetRange: Range = Range.create(
         Position.create(0, 0),
         Position.create(0, 0),
       );
-      if (targetPosition != null) {
+      if (targetPositionStart != null) {
+        const targetPositionEnd = Position.create(
+          targetPositionStart.line,
+          targetPositionStart.character + currentWord.length,
+        );
         targetRange = {
-          start: targetPosition,
-          end: targetPosition,
+          start: targetPositionStart,
+          end: targetPositionEnd,
         };
       }
 
+      console.log(importPath, targetRange);
       return Location.create(`file://${importPath}`, targetRange);
     }
 
     // Otherwise try and find the import path
     const importPath = findImportPath(fileContent, currentWord, currentDir);
     if (importPath !== "") {
-      const targetPosition = await getPosition(
+      const targetPositionStart = getPosition(
         importPath,
         currentWord,
-        this._camelCaseConfig,
       );
-      if (targetPosition != null) {
+      if (targetPositionStart != null) {
+        const targetPositionEnd = Position.create(
+          targetPositionStart.line,
+          targetPositionStart.character + currentWord.length,
+        );
         const targetRange: Range = {
-          start: targetPosition,
-          end: targetPosition,
+          start: targetPositionStart,
+          end: targetPositionEnd,
         };
         return Location.create(`file://${importPath}`, targetRange);
       }
     }
 
-    return null
+    return null;
   }
 }
 

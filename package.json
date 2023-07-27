@@ -54,6 +54,7 @@
     "glob": "^10.3.3",
     "lilconfig": "^2.0.4",
     "lodash.camelcase": "^4.3.0",
+    "match-index": "^1.0.3",
     "postcss": "^8.1.10",
     "postcss-less": "^6.0.0",
     "postcss-sass": "^0.5.0",

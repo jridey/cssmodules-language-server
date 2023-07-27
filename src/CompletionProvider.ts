@@ -24,16 +24,6 @@ import { CamelCaseValues, getTransformer } from "./utils";
 // }
 
 export class CSSModulesCompletionProvider {
-  _classTransformer: (x: string) => string;
-
-  constructor(camelCaseConfig: CamelCaseValues) {
-    this._classTransformer = getTransformer(camelCaseConfig);
-  }
-
-  updateSettings(camelCaseConfig: CamelCaseValues): void {
-    this._classTransformer = getTransformer(camelCaseConfig);
-  }
-
   completion = async (params: lsp.CompletionParams) => {
     const textdocument = textDocuments.get(params.textDocument.uri);
     if (textdocument === undefined) {

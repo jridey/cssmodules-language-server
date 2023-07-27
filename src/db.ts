@@ -3,14 +3,14 @@ import TrieSearch from "trie-search";
 type Data = {
   key: string;
   filePath: string;
-  start: number;
-  end: number;
+  lineNo: number;
+  startChar: number;
 };
 
 let db = new TrieSearch<Data>("key");
 
-export function add(key: string, value: string, start: number, end: number) {
-  db.add({ key, filePath: value, start, end });
+export function add(key: string, value: string, lineNo: number, startChar: number) {
+  db.add({ key, filePath: value, lineNo, startChar });
 }
 
 export function searchPartly(key: string) {

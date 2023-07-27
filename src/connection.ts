@@ -2,6 +2,7 @@ import * as lsp from "vscode-languageserver/node";
 
 import * as fs from "fs";
 import { Glob } from "glob";
+import { matchCaptureGroupAll } from "match-index";
 import * as readline from "readline";
 import { CSSModulesCompletionProvider } from "./CompletionProvider";
 import * as db from "./db";
@@ -14,28 +15,11 @@ export function createConnection(): lsp.Connection {
   textDocuments.listen(connection);
 
   let rootPath: string;
-  const defaultSettings = {
-    camelCase: true,
-  } as const;
-  const completionProvider = new CSSModulesCompletionProvider(
-    defaultSettings.camelCase,
-  );
-  const definitionProvider = new CSSModulesDefinitionProvider(
-    defaultSettings.camelCase,
-  );
+  const completionProvider = new CSSModulesCompletionProvider();
+  const definitionProvider = new CSSModulesDefinitionProvider();
 
-  connection.onInitialize(({ rootUri, capabilities, initializationOptions }) => {
+  connection.onInitialize(({ rootUri, capabilities }) => {
     rootPath = rootUri ?? "";
-    if (initializationOptions) {
-      if ("camelCase" in initializationOptions) {
-        completionProvider.updateSettings(
-          initializationOptions.camelCase,
-        );
-        definitionProvider.updateSettings(
-          initializationOptions.camelCase,
-        );
-      }
-    }
     const hasWorkspaceFolderCapability = !!(
       capabilities.workspace && !!capabilities.workspace.workspaceFolders
     );
@@ -77,13 +61,16 @@ export function createConnection(): lsp.Connection {
     cssFilesStream.stream().on("data", path => {
       const fileStream = fs.createReadStream(path.fullpath(), "utf-8");
       const rl = readline.createInterface({ input: fileStream, crlfDelay: Infinity });
-      rl.on("line", (line) => {
-        const match = /.*@value (.+?): .*;/g.exec(line);
-        if (match?.[1]) {
-          const start = 0;
-          const end = 0;
-          db.add(match[1], path.relative(), start, end);
+
+      let lineNo = 0;
+      rl.on("line", line => {
+        const match = matchCaptureGroupAll(line, /.*@value (.+?): .*;/);
+        if (match?.[0]) {
+          const cssClass = match[0];
+          const startChar = cssClass.index;
+          db.add(cssClass.text, path.relative(), lineNo, startChar);
         }
+        lineNo++;
       });
     });
   });
