@@ -1,9 +1,9 @@
-import * as lsp from "vscode-languageserver/node";
-
 import * as fs from "fs";
 import { Glob } from "glob";
 import { matchCaptureGroupAll } from "match-index";
+import path from "path";
 import * as readline from "readline";
+import * as lsp from "vscode-languageserver/node";
 import { CSSModulesCompletionProvider } from "./CompletionProvider";
 import * as db from "./db";
 import { CSSModulesDefinitionProvider } from "./DefinitionProvider";
@@ -14,12 +14,11 @@ export function createConnection(): lsp.Connection {
 
   textDocuments.listen(connection);
 
-  let rootPath: string;
   const completionProvider = new CSSModulesCompletionProvider();
   const definitionProvider = new CSSModulesDefinitionProvider();
 
-  connection.onInitialize(({ rootUri, capabilities }) => {
-    rootPath = rootUri ?? "";
+  connection.onInitialize(({ capabilities }) => {
+    // TODO: Setup workspace functionality to only scan the correct directories
     const hasWorkspaceFolderCapability = !!(
       capabilities.workspace && !!capabilities.workspace.workspaceFolders
     );
@@ -39,7 +38,7 @@ export function createConnection(): lsp.Connection {
           /**
            * only invoke completion once `.` is pressed
            */
-          triggerCharacters: ["."],
+          triggerCharacters: [" "],
           resolveProvider: true,
         },
       },
@@ -57,7 +56,7 @@ export function createConnection(): lsp.Connection {
 
   connection.onInitialized(() => {
     // slice(7) -> remove the file:// at the start of the string.
-    const cssFilesStream = new Glob("src/**/*.css", { root: rootPath, withFileTypes: true });
+    const cssFilesStream = new Glob("**/*.css", { ignore: ["node_modules/**"], withFileTypes: true });
     cssFilesStream.stream().on("data", path => {
       const fileStream = fs.createReadStream(path.fullpath(), "utf-8");
       const rl = readline.createInterface({ input: fileStream, crlfDelay: Infinity });

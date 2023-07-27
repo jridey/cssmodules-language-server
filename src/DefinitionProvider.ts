@@ -4,13 +4,7 @@ import { Hover, Location, Position, Range } from "vscode-languageserver-protocol
 import { TextDocument } from "vscode-languageserver-textdocument";
 import * as lsp from "vscode-languageserver/node";
 import { textDocuments } from "./textDocuments";
-import {
-  findImportPath,
-  genImportRegExp,
-  getCurrentDirFromUri,
-  getPosition,
-  isImportLineMatch,
-} from "./utils";
+import { findImportPath, genImportRegExp, getCurrentDirFromUri, getPosition, isImportLineMatch } from "./utils";
 
 export class CSSModulesDefinitionProvider {
   definition = async (params: lsp.DefinitionParams) => {

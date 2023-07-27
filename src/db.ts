@@ -1,6 +1,6 @@
 import TrieSearch from "trie-search";
 
-type Data = {
+export type Data = {
   key: string;
   filePath: string;
   lineNo: number;
