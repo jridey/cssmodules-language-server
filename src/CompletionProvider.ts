@@ -7,24 +7,7 @@ import * as lsp from "vscode-languageserver/node";
 import * as db from "./db";
 import { Data } from "./db";
 import { textDocuments } from "./textDocuments";
-
-// // check if current character or last character is .
-// function isTrigger(line: string, position: Position): boolean {
-//     const i = position.character - 1;
-//     return line[i] === '.' || (i > 1 && line[i - 1] === '.');
-// }
-//
-// function getWords(line: string, position: Position): string {
-//     const text = line.slice(0, position.character);
-//     const index = text.search(/[a-z0-9\._]*$/i);
-//     if (index === -1) {
-//         return '';
-//     }
-//
-//     return text.slice(index);
-// }
-
-const IMPORT_REGEX = /(.*?@value )(.+?)( from "(.+)";)/;
+import { ImportLineMatch, importLineMatch, toTSConfigPath } from "./utils";
 
 export class CSSModulesCompletionProvider {
   completion = async (params: lsp.CompletionParams) => {
@@ -77,45 +60,43 @@ export class CSSModulesCompletionProvider {
   }
 
   createImportEdit(completion: Data, lines: string[]) {
-    let importLine: { index: number; line: string; match: RegExpExecArray } | undefined = undefined;
+    const filePath = toTSConfigPath(completion.filePath);
+
+    let importLine: { index: number; match: ImportLineMatch } | undefined = undefined;
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
-      const match = IMPORT_REGEX.exec(line);
+      const match = importLineMatch(line);
       if (match) {
-        importLine = { index: i, line, match };
-
-        const existingClasses = match[2].split(",").map(cls => cls.trim());
+        importLine = { index: i, match };
 
         // If the class already exists as an import then lets exclude it from the completion,
         // since it will probably already be handled by the editor.
-        if (existingClasses.indexOf(completion.key) !== -1) {
+        if (match.classNames.indexOf(completion.key) !== -1) {
           return undefined;
         }
 
-        if (match[4] === completion.filePath) {
+        if (match.filePath === filePath) {
           break;
         }
       }
     }
 
     if (importLine) {
-      const start = importLine.match[1];
-      const existingClasses = importLine.match[2].split(",").map(cls => cls.trim());
-      const newClasses = [...existingClasses, completion.key].sort().join(", ");
-      const end = importLine.match[3];
+      const match = importLine.match;
+      const newClasses = [...match.classNames, completion.key].sort().join(", ");
 
       return TextEdit.replace(
         Range.create(
           Position.create(importLine.index, 0),
-          Position.create(importLine.index, importLine.line!.length),
+          Position.create(importLine.index, match.line.length),
         ),
-        `${start}${newClasses}${end}`,
+        `${match.start}${newClasses}${match.end}`,
       );
     }
 
     return TextEdit.insert(
       Position.create(0, 0),
-      `@value ${completion.key} from "${completion.filePath}";\n`,
+      `@value ${completion.key} from "${filePath}";\n`,
     );
   }
 }
