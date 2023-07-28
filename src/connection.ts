@@ -71,6 +71,8 @@ export function createConnection(): lsp.Connection {
         lineNo++;
       });
     }).on("end", () => {
+      // connection.sendProgress(new lsp.ProgressType<number>(), "css-indexing", 0);
+      console.log("Done indexing")
     });
   });
 

@@ -42,15 +42,15 @@ export class CSSModulesCompletionProvider {
       const matchIndex = match.indices[2][0];
 
       return {
-        ...CompletionItem.create(completion.key),
+        ...CompletionItem.create(completion.className),
         kind: lsp.CompletionItemKind.Variable,
         detail: "@value",
         textEdit: TextEdit.replace(
           Range.create(
             Position.create(position.line, matchIndex),
-            Position.create(position.line, matchIndex + completion.key.length + matchText.length),
+            Position.create(position.line, matchIndex + completion.className.length + matchText.length),
           ),
-          completion.key + matchText,
+          completion.className + matchText,
         ),
         additionalTextEdits: [importEdit],
       };
@@ -71,7 +71,7 @@ export class CSSModulesCompletionProvider {
 
         // If the class already exists as an import then lets exclude it from the completion,
         // since it will probably already be handled by the editor.
-        if (match.classNames.indexOf(completion.key) !== -1) {
+        if (match.classNames.indexOf(completion.className) !== -1) {
           return undefined;
         }
 
@@ -83,7 +83,7 @@ export class CSSModulesCompletionProvider {
 
     if (importLine) {
       const match = importLine.match;
-      const newClasses = [...match.classNames, completion.key].sort().join(", ");
+      const newClasses = [...match.classNames, completion.className].sort().join(", ");
 
       return TextEdit.replace(
         Range.create(

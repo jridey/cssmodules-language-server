@@ -3,7 +3,7 @@ import { Location, Position, Range } from "vscode-languageserver-protocol";
 import { TextDocument } from "vscode-languageserver-textdocument";
 import * as lsp from "vscode-languageserver/node";
 import { textDocuments } from "./textDocuments";
-import { getPosition, getWordAt, importLineMatch, resolveTSConfigPath } from "./utils";
+import { getPositionOfClassName, getWordAt, importLineMatch, resolveTSConfigPath } from "./utils";
 
 export class CSSModulesDefinitionProvider {
   definition = async (params: lsp.DefinitionParams) => {
@@ -30,11 +30,14 @@ export class CSSModulesDefinitionProvider {
       return null;
     }
 
-    const absoluteFilePath = resolveTSConfigPath(match.filePath);
+    const absoluteFilePath = resolveTSConfigPath(match.filePath, textdocument.uri);
+    if (!absoluteFilePath) {
+      return null;
+    }
 
-    const targetPositionStart = getPosition(
-      absoluteFilePath,
+    const targetPositionStart = getPositionOfClassName(
       currentWord,
+      match.filePath,
     );
 
     let targetRange: Range = Range.create(
@@ -52,6 +55,6 @@ export class CSSModulesDefinitionProvider {
       };
     }
 
-    return Location.create(`file://${absoluteFilePath}`, targetRange);
+    return Location.create(absoluteFilePath, targetRange);
   }
 }
