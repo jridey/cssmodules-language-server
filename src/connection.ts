@@ -1,8 +1,7 @@
 import * as fs from "fs";
 import { Glob } from "glob";
-import { matchCaptureGroupAll } from "match-index";
-import path from "path";
 import * as readline from "readline";
+import execWithIndices from "regexp-match-indices";
 import * as lsp from "vscode-languageserver/node";
 import { CSSModulesCompletionProvider } from "./CompletionProvider";
 import * as db from "./db";
@@ -36,7 +35,7 @@ export function createConnection(): lsp.Connection {
         implementationProvider: false,
         completionProvider: {
           /**
-           * only invoke completion once `.` is pressed
+           * only invoke completion once ` `  is pressed
            */
           triggerCharacters: [" "],
           resolveProvider: true,
@@ -63,14 +62,15 @@ export function createConnection(): lsp.Connection {
 
       let lineNo = 0;
       rl.on("line", line => {
-        const match = matchCaptureGroupAll(line, /.*@value (.+?): .*;/);
-        if (match?.[0]) {
-          const cssClass = match[0];
-          const startChar = cssClass.index;
-          db.add(cssClass.text, path.relative(), lineNo, startChar);
+        const match = execWithIndices(/.*@value (.+?): .*;/, line);
+        if (match) {
+          const cssClass = match[1];
+          const startChar = match.indices[1][0];
+          db.add(cssClass, path.relative(), lineNo, startChar);
         }
         lineNo++;
       });
+    }).on("end", () => {
     });
   });
 

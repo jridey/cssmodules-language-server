@@ -9,6 +9,10 @@ export type Data = {
 
 let db = new TrieSearch<Data>("key");
 
+export function _internalDb() {
+  return db;
+}
+
 export function add(key: string, value: string, lineNo: number, startChar: number) {
   db.add({ key, filePath: value, lineNo, startChar });
 }
