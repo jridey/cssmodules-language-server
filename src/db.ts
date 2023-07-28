@@ -1,9 +1,9 @@
-import TrieSearch from "trie-search";
 import path from "path";
+import TrieSearch from "trie-search";
 
 export type Data = {
   _key: string;
-  className: string,
+  className: string;
   filePath: string;
   lineNo: number;
   startChar: number;
@@ -21,23 +21,24 @@ export function add(className: string, filePath: string, lineNo: number, startCh
 
 export function searchPartly(key: string, filePath?: string) {
   if (filePath) {
-    key += `:${uniqueFilePathKey(filePath)}`
+    key += `:${uniqueFilePathKey(filePath)}`;
   }
 
-  return db.search(key, undefined, 50).sort((a,b) => {
+  return db.search(key).sort((a, b) => {
     const importanceA = importance(a);
     const importanceB = importance(b);
-    return importanceB - importanceA
-  }).slice(0, 10);
+    return importanceB - importanceA;
+  }); // .slice(0, 10);
 }
 
 function uniqueFilePathKey(filePath: string) {
-  const parts = filePath.split(path.sep)
-  return parts.slice(parts.length-2).join(path.sep)
+  const parts = filePath.split(path.sep);
+  return parts.slice(parts.length - 2).join(path.sep);
 }
 
 function importance(d: Data) {
   let imp = 0;
-  imp += d.filePath.indexOf("ui/") ? 1 : 0
-  return imp
+  imp += d.filePath.indexOf("ui/") !== -1 ? 1 : 0;
+  imp += d.filePath.indexOf("ui/base") !== -1 ? 1 : 0;
+  return imp;
 }

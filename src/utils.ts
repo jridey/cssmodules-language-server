@@ -37,14 +37,14 @@ export function importLineMatch(
  */
 export function resolveTSConfigPath(filePath: string, fileUri: string) {
   // TODO: There are probably much better ways of doing this but this will work for the time being
-  const srcInd = fileUri.indexOf("src")
+  const srcInd = fileUri.indexOf("src");
   // Somehow we are outside the src directory?
   if (srcInd === -1) {
     return null;
   }
 
   // 7 for the "file://" since path.resolve doesn't correctly handle it
-  const rootUri = fileUri.slice(7, srcInd+3)
+  const rootUri = fileUri.slice(7, srcInd + 3);
   return `file://${path.resolve(rootUri, filePath)}`;
 }
 
@@ -54,12 +54,12 @@ export function resolveTSConfigPath(filePath: string, fileUri: string) {
  */
 export function toTSConfigPath(filePath: string) {
   // TODO: There are probably much better ways of doing this but this will work for the time being
-  const srcInd = filePath.indexOf("src")
+  const srcInd = filePath.indexOf("src");
   // Somehow we are outside the src directory?
   if (srcInd === -1) {
     return filePath;
   }
-  return filePath.slice(0, srcInd+3);
+  return filePath.slice(srcInd + 4);
 }
 
 /**

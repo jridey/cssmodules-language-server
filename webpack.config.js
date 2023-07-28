@@ -2,7 +2,7 @@ const path = require("path");
 
 module.exports = {
   entry: "./src/cli.ts", // Entry point of your TypeScript project
-  devtool: "inline-source-map",
+  devtool: "source-map",
   output: {
     filename: "server.js", // Output bundle filename
     path: path.resolve(__dirname, "dist"), // Output directory

@@ -72,7 +72,7 @@ export function createConnection(): lsp.Connection {
       });
     }).on("end", () => {
       // connection.sendProgress(new lsp.ProgressType<number>(), "css-indexing", 0);
-      console.log("Done indexing")
+      console.log("Done indexing");
     });
   });
 

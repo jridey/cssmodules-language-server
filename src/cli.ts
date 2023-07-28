@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
+import { version } from "../package.json";
 import { createConnection } from "./connection";
-import {version} from "../package.json";
 
 const args = process.argv;
 

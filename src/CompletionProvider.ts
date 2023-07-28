@@ -27,19 +27,29 @@ export class CSSModulesCompletionProvider {
     const lines = fileContent.split(EOL);
     const currentLine = lines[position.line];
 
+    console.log("Completion called with", currentLine);
+
     // TODO: Probably not the best regex for extracting out variables but it will do
     const match = execWithIndices(/.*?: ?([^ ;]+)(.*)/, currentLine);
-    if (!match) return CompletionList.create();
+    if (!match) return CompletionList.create([], true);
 
     const partialClassName = match[1];
+
+    console.log("Trying to complete with", partialClassName);
+
     const classNameMatches = db.searchPartly(partialClassName);
+
+    console.log(
+      "This is what I found (only showing first 5)",
+      classNameMatches.map(item => item.className).slice(0, 5).join(", "),
+    );
 
     const completionItems = classNameMatches.map((completion) => {
       const importEdit = this.createImportEdit(completion, lines);
       if (!importEdit) return undefined;
 
-      const matchText = match[2];
-      const matchIndex = match.indices[2][0];
+      const classNameInd = match.indices[1][0];
+      const endText = match[2];
 
       return {
         ...CompletionItem.create(completion.className),
@@ -47,10 +57,10 @@ export class CSSModulesCompletionProvider {
         detail: "@value",
         textEdit: TextEdit.replace(
           Range.create(
-            Position.create(position.line, matchIndex),
-            Position.create(position.line, matchIndex + completion.className.length + matchText.length),
+            Position.create(position.line, classNameInd),
+            Position.create(position.line, classNameInd + completion.className.length + endText.length),
           ),
-          completion.className + matchText,
+          completion.className + endText,
         ),
         additionalTextEdits: [importEdit],
       };
@@ -81,7 +91,7 @@ export class CSSModulesCompletionProvider {
       }
     }
 
-    if (importLine) {
+    if (importLine && importLine.match.filePath === filePath) {
       const match = importLine.match;
       const newClasses = [...match.classNames, completion.className].sort().join(", ");
 
@@ -95,8 +105,8 @@ export class CSSModulesCompletionProvider {
     }
 
     return TextEdit.insert(
-      Position.create(0, 0),
-      `@value ${completion.key} from "${filePath}";\n`,
+      Position.create(importLine?.index ?? 0, 0),
+      `@value ${completion.className} from "${filePath}";\n`,
     );
   }
 }
