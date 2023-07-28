@@ -7,7 +7,7 @@ export type Data = {
   startChar: number;
 };
 
-let db = new TrieSearch<Data>("key");
+const db = new TrieSearch<Data>("key");
 
 export function _internalDb() {
   return db;
